@@ -3,8 +3,13 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	noBufferSpace = "system lacked sufficient buffer space"
 )
 
 func ScanTCP(startPort, endPort int) {
@@ -22,11 +27,20 @@ func ScanTCPConcurrently(startPort, endPort int) {
 	for port := startPort; port <= endPort; port++ {
 		wg.Add(1)
 		go func(port int) {
-			portStr := getPortString(port)
-			_, err := net.Dial("tcp", portStr)
+			portStrRep := getPortString(port)
+			_, err := net.Dial("tcp", portStrRep)
+
+			for tooManyConnections(err) {
+				time.Sleep(time.Microsecond)
+				_, err = net.Dial("tcp", portStrRep)
+			}
+
 			if err == nil {
 				fmt.Printf("TCP Port %d is open\n", port)
+			} else if tooManyConnections(err) {
+				fmt.Printf("Too many connections error occurred: %v\n", err)
 			}
+
 			wg.Done()
 		}(port)
 	}
@@ -37,9 +51,14 @@ func getPortString(port int) string {
 	return fmt.Sprintf(":%d", port)
 }
 
+func tooManyConnections(err error) bool {
+	if err == nil {
+		return false
+	}
+	strRepOfErr := err.Error()
+	return strings.Contains(strRepOfErr, noBufferSpace)
+}
+
 func main() {
-	fmt.Println("Starting Synchronous Scan")
-	ScanTCP(1, 1024)
-	fmt.Println("Starting Concurrent Scan")
-	ScanTCPConcurrently(1, 1024)
+	ScanTCPConcurrently(1, 65535)
 }
