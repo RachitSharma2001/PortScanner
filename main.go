@@ -9,36 +9,39 @@ import (
 )
 
 const (
+	tcpProtocol   = "tcp"
+	udpProtocol   = "udp"
 	noBufferSpace = "system lacked sufficient buffer space"
 )
 
-func ScanTCP(startPort, endPort int) {
-	dialLimit := time.Microsecond
+func ScanUDP(startPort, endPort int) {
+	var wg sync.WaitGroup
 	for port := startPort; port <= endPort; port++ {
-		_, err := net.DialTimeout("tcp", fmt.Sprintf(":%d", port), dialLimit)
-		if err == nil {
-			fmt.Printf("TCP Port %d is open\n", port)
-		}
+		wg.Add(1)
+		go func(port int) {
+			addr, err := net.ResolveUDPAddr(udpProtocol, getPortString(port))
+			_, err = net.DialUDP(udpProtocol, nil, addr)
+			if err == nil {
+				printPortOpenMsg(udpProtocol, port)
+			}
+			wg.Done()
+		}(port)
 	}
+	wg.Wait()
 }
 
-func ScanTCPConcurrently(startPort, endPort int) {
+func ScanTCP(startPort, endPort int) {
 	var wg sync.WaitGroup
 	for port := startPort; port <= endPort; port++ {
 		wg.Add(1)
 		go func(port int) {
 			portStrRep := getPortString(port)
-			_, err := net.Dial("tcp", portStrRep)
+			portScanErr := scanTcpPort(portStrRep)
 
-			for tooManyConnections(err) {
-				time.Sleep(time.Microsecond)
-				_, err = net.Dial("tcp", portStrRep)
-			}
-
-			if err == nil {
-				fmt.Printf("TCP Port %d is open\n", port)
-			} else if tooManyConnections(err) {
-				fmt.Printf("Too many connections error occurred: %v\n", err)
+			if portScanErr == nil {
+				printPortOpenMsg(tcpProtocol, port)
+			} else if tooManyConnectionsExists(portScanErr) {
+				fmt.Printf("Too many connections error occurred: %v\n", portScanErr)
 			}
 
 			wg.Done()
@@ -51,7 +54,16 @@ func getPortString(port int) string {
 	return fmt.Sprintf(":%d", port)
 }
 
-func tooManyConnections(err error) bool {
+func scanTcpPort(portStrRep string) error {
+	_, err := net.Dial(tcpProtocol, portStrRep)
+	for tooManyConnectionsExists(err) {
+		time.Sleep(time.Microsecond)
+		_, err = net.Dial(tcpProtocol, portStrRep)
+	}
+	return err
+}
+
+func tooManyConnectionsExists(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -59,6 +71,11 @@ func tooManyConnections(err error) bool {
 	return strings.Contains(strRepOfErr, noBufferSpace)
 }
 
+func printPortOpenMsg(protocol string, port int) {
+	fmt.Printf("%s port %d is open\n", protocol, port)
+}
+
 func main() {
-	ScanTCPConcurrently(1, 65535)
+	ScanUDP(1, 65535)
+	ScanTCP(1, 65535)
 }
