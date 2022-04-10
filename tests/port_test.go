@@ -1,8 +1,8 @@
 package main_test
 
 import (
+	"fmt"
 	"net"
-	"strconv"
 	"sync"
 	"testing"
 
@@ -18,31 +18,38 @@ func TestPortScanner(t *testing.T) {
 
 var _ = Describe("Scanning TCP Ports", func() {
 	portToListen := 3000
-	host := "localhost"
-	portRep := host + ":" + strconv.Itoa(portToListen)
+	hostname := "localhost"
 	var listener net.Listener
 	Context("if we scan an open TCP port", func() {
-		listener, _ = net.Listen("tcp", portRep)
-		var scanRes port.ScanResults
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go port.ScanIndividualTcpPort(portToListen, host, &scanRes, &wg)
-		wg.Wait()
-		openPorts := scanRes.OpenPorts
+		setUpServerAtTcpPort(&listener, portToListen, hostname)
+		openPorts := getOpenTcpPorts(portToListen, hostname)
 		It("the scan should detect the open port", func() {
 			Expect(openPorts).To(ContainElement(portToListen))
 		})
 	})
 	listener.Close()
 	Context("if we scan a closed TCP port", func() {
-		var scanRes port.ScanResults
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go port.ScanIndividualTcpPort(portToListen, host, &scanRes, &wg)
-		wg.Wait()
-		openPorts := scanRes.OpenPorts
+		openPorts := getOpenTcpPorts(portToListen, hostname)
 		It("the scan should detect no open ports", func() {
 			Expect(openPorts).To(BeEmpty())
 		})
 	})
 })
+
+func setUpServerAtTcpPort(listener *net.Listener, portToListen int, hostname string) {
+	portRep := getPortRep(portToListen, hostname)
+	*listener, _ = net.Listen("tcp", portRep)
+}
+
+func getPortRep(port int, hostname string) string {
+	return fmt.Sprintf("%s:%d", hostname, port)
+}
+
+func getOpenTcpPorts(portToListen int, hostname string) []int {
+	var scanRes port.ScanResults
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go port.ScanIndividualTcpPort(portToListen, hostname, &scanRes, &wg)
+	wg.Wait()
+	return scanRes.OpenPorts
+}
