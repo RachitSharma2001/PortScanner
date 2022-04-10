@@ -55,6 +55,11 @@ func setUpServerAtTcpPort(listener *net.Listener, portToListen int, hostname str
 	*listener, _ = net.Listen("tcp", portRep)
 }
 
+func setUpServerAtUdpPort(listener *net.PacketConn, portToListen int, hostname string) {
+	portRep := getPortRep(portToListen, hostname)
+	*listener, _ = net.ListenPacket("udp", portRep)
+}
+
 func getPortRep(port int, hostname string) string {
 	return fmt.Sprintf("%s:%d", hostname, port)
 }
@@ -66,11 +71,6 @@ func getOpenTcpPorts(portToListen int, hostname string) []int {
 	go port.ScanIndividualTcpPort(portToListen, hostname, &scanRes, &wg)
 	wg.Wait()
 	return scanRes.OpenPorts
-}
-
-func setUpServerAtUdpPort(listener *net.PacketConn, portToListen int, hostname string) {
-	portRep := getPortRep(portToListen, hostname)
-	*listener, _ = net.ListenPacket("udp", portRep)
 }
 
 func getOpenUdpPorts(portToListen int, hostname string) []int {
