@@ -23,14 +23,14 @@ var _ = Describe("Scanning TCP Ports", func() {
 	Context("if we scan an open TCP port", func() {
 		setUpServerAtTcpPort(&listener, portToListen, hostname)
 		openPorts := getOpenTcpPorts(portToListen, hostname)
-		It("the scan should detect the open port", func() {
+		It("the open port should be detected", func() {
 			Expect(openPorts).To(ContainElement(portToListen))
 		})
 	})
 	listener.Close()
 	Context("if we scan a closed TCP port", func() {
 		openPorts := getOpenTcpPorts(portToListen, hostname)
-		It("the scan should detect no open ports", func() {
+		It("no port should be detected", func() {
 			Expect(openPorts).To(BeEmpty())
 		})
 	})
@@ -43,7 +43,7 @@ var _ = Describe("Scanning UDP Ports", func() {
 	Context("if we scan an open UDP port", func() {
 		setUpServerAtUdpPort(&listener, portToListen, hostname)
 		openPorts := getOpenUdpPorts(portToListen, hostname)
-		It("the scan should detect the open port", func() {
+		It("the open port should be detected", func() {
 			Expect(openPorts).To(ContainElement(portToListen))
 		})
 	})
