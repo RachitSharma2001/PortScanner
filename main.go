@@ -7,12 +7,13 @@ import (
 )
 
 func main() {
-	/*openPorts := port.RunWideUDPScan(1, 65535, "0.0.0.0")
-	fmt.Println("Open UDP ports:")
-	fmt.Println(openPorts)*/
+	openUdpPorts := port.RunWideUDPScan(1, 65535, "0.0.0.0")
+	printPorts("UDP", openUdpPorts)
 
-	openPorts := port.RunWideTCPScan(1, 65535, "0.0.0.0")
-	fmt.Println("Open TCP ports:")
-	fmt.Println(openPorts)
-	//port.RunWideTCPScan(1, 65535, "localhost")
+	openTcpPorts := port.RunWideTCPScan(1, 65535, "0.0.0.0")
+	printPorts("TCP", openTcpPorts)
+}
+
+func printPorts(protocol string, openPorts []int) {
+	fmt.Printf("Open %s ports: %v \n", protocol, openPorts)
 }
