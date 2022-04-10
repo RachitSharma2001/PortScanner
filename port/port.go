@@ -16,55 +16,73 @@ const (
 	noBufferSpace = "system lacked sufficient buffer space"
 )
 
-func RunWideUDPScan(startPort, endPort int) {
+type ScanResults struct {
+	mu        sync.Mutex
+	openPorts []int
+}
+
+func (s *ScanResults) addOpenPort(port int) {
+	s.mu.Lock()
+	s.openPorts = append(s.openPorts, port)
+	s.mu.Unlock()
+}
+
+func RunWideUDPScan(startPort int, endPort int, hostname string) []int {
+	var scanRes ScanResults
 	var wg sync.WaitGroup
 	for port := startPort; port <= endPort; port++ {
 		wg.Add(1)
-		go scanIndividualUdpPort(port, &wg)
+		go scanIndividualUdpPort(port, hostname, &wg, &scanRes)
 	}
 	wg.Wait()
+	return scanRes.openPorts
 }
 
-func scanIndividualUdpPort(port int, wg *sync.WaitGroup) {
-	addr, err := net.ResolveUDPAddr(udpProtocol, getPortString(port))
-	_, err = net.DialUDP(udpProtocol, nil, addr)
+func scanIndividualUdpPort(port int, hostname string, wg *sync.WaitGroup, scanRes *ScanResults) {
+	portRep := getPortString(port, hostname)
+	addr, err := net.ResolveUDPAddr(udpProtocol, portRep)
+	conn, err := net.DialUDP(udpProtocol, nil, addr)
 	if errhelp.NoError(err) {
-		printPortOpenMsg(udpProtocol, port)
+		scanRes.addOpenPort(port)
+		conn.Close()
 	}
 	wg.Done()
 }
 
-func RunWideTCPScan(startPort, endPort int) {
+func RunWideTCPScan(startPort int, endPort int, hostname string) []int {
+	var scanRes ScanResults
 	var wg sync.WaitGroup
 	for port := startPort; port <= endPort; port++ {
 		wg.Add(1)
-		go scanIndividualTcpPort(port, &wg)
+		go scanIndividualTcpPort(port, hostname, &scanRes, &wg)
 	}
 	wg.Wait()
+	return scanRes.openPorts
 }
 
-func scanIndividualTcpPort(port int, wg *sync.WaitGroup) {
-	portStrRep := getPortString(port)
-	portScanErr := sendRequestToTcpPort(portStrRep)
+func scanIndividualTcpPort(port int, hostname string, scanRes *ScanResults, wg *sync.WaitGroup) {
+	portStrRep := getPortString(port, hostname)
+	portConn, portScanErr := sendRequestToTcpPort(portStrRep)
 	if errhelp.NoError(portScanErr) {
-		printPortOpenMsg(tcpProtocol, port)
+		scanRes.addOpenPort(port)
+		(*portConn).Close()
 	} else if tooManyConnectionsExists(portScanErr) {
 		printError(portScanErr)
 	}
 	wg.Done()
 }
 
-func getPortString(port int) string {
-	return fmt.Sprintf(":%d", port)
+func getPortString(port int, hostname string) string {
+	return fmt.Sprintf("%s:%d", hostname, port)
 }
 
-func sendRequestToTcpPort(portStrRep string) error {
-	_, err := net.Dial(tcpProtocol, portStrRep)
+func sendRequestToTcpPort(portStrRep string) (*net.Conn, error) {
+	conn, err := net.Dial(tcpProtocol, portStrRep)
 	for tooManyConnectionsExists(err) {
 		time.Sleep(time.Nanosecond)
-		_, err = net.Dial(tcpProtocol, portStrRep)
+		conn, err = net.Dial(tcpProtocol, portStrRep)
 	}
-	return err
+	return &conn, err
 }
 
 func tooManyConnectionsExists(err error) bool {
