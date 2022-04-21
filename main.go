@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"fake.com/PortScanner/port"
 )
@@ -48,7 +49,7 @@ func validatePortRange() {
 		err := fmt.Errorf("Invalid end port: port cannot be > %d\n", MAX_END_PORT)
 		log.Fatal(err)
 	} else if *startPort > *endPort {
-		err := fmt.Errorf("Invalid port range: start port must be <= end port\n", MAX_END_PORT)
+		err := fmt.Errorf("Invalid port range: start port must be <= end port\n")
 		log.Fatal(err)
 	}
 }
@@ -79,11 +80,12 @@ func printPorts(openPorts []int) {
 }
 
 func outputAllOpenPorts(openPorts []int) {
-	fmt.Printf("-------------- Open %s Ports on Host %q --------------\n", *protocol, *hostname)
+	openPortMsg := fmt.Sprintf("----------- Open %s Ports on Host %q from %d - %d -----------\n", *protocol, *hostname, *startPort, *endPort)
+	fmt.Printf(openPortMsg)
 	for _, port := range openPorts {
 		fmt.Println(port)
 	}
-	fmt.Printf("-----------------------------------------------------------------\n")
+	fmt.Println(strings.Repeat("-", len(openPortMsg)-1))
 }
 
 func outputPortIsEmpty() {
