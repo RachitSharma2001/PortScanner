@@ -16,44 +16,76 @@ const (
 	MAX_END_PORT     = 65535
 )
 
+var (
+	protocol  *string
+	hostname  *string
+	startPort *int
+	endPort   *int
+)
+
 func main() {
-	protocol := flag.String("protocol", DEFAULT_PROTOCOL, "Either TCP or UDP")
-	hostname := flag.String("host", DEFAULT_HOSTNAME, "Host IP address")
-	startPort := flag.Int("start", MIN_START_PORT, "Port to start when scanning")
-	endPort := flag.Int("end", MAX_END_PORT, "Port to end when scanning")
+	parseUserEnteredFlags()
+	validatePortRange()
+	validateProtocol()
+	openPorts := scanForOpenPorts()
+	sort.Ints(openPorts)
+	printPorts(openPorts)
+}
+
+func parseUserEnteredFlags() {
+	protocol = flag.String("protocol", DEFAULT_PROTOCOL, "Either TCP or UDP")
+	hostname = flag.String("host", DEFAULT_HOSTNAME, "Host IP address")
+	startPort = flag.Int("start", MIN_START_PORT, "Port to start when scanning")
+	endPort = flag.Int("end", MAX_END_PORT, "Port to end when scanning")
 	flag.Parse()
+}
 
-	var openPorts []int
-
+func validatePortRange() {
 	if *startPort < MIN_START_PORT {
 		err := fmt.Errorf("Invalid start port: port cannot be < %d\n", MIN_START_PORT)
 		log.Fatal(err)
 	} else if *endPort > MAX_END_PORT {
 		err := fmt.Errorf("Invalid end port: port cannot be > %d\n", MAX_END_PORT)
 		log.Fatal(err)
+	} else if *startPort > *endPort {
+		err := fmt.Errorf("Invalid port range: start port must be <= end port\n", MAX_END_PORT)
+		log.Fatal(err)
 	}
+}
 
-	if *protocol == "UDP" {
-		openPorts = port.RunWideUDPScan(*startPort, *endPort, *hostname)
-	} else if *protocol == "TCP" {
-		openPorts = port.RunWideTCPScan(*startPort, *endPort, *hostname)
-	} else {
+func validateProtocol() {
+	if *protocol != "UDP" && *protocol != "TCP" {
 		err := fmt.Errorf("Invalid Protocol: %s is not valid protocol (only TCP and UDP are valid)\n", *protocol)
 		log.Fatal(err)
 	}
-
-	sort.Ints(openPorts)
-	printPorts(*protocol, *hostname, openPorts)
 }
 
-func printPorts(protocol string, hostname string, openPorts []int) {
-	if len(openPorts) > 0 {
-		fmt.Printf("-------------- Open %s Ports on Host %q --------------\n", protocol, hostname)
-		for _, port := range openPorts {
-			fmt.Println(port)
-		}
-		fmt.Printf("-----------------------------------------------------------------\n")
+func scanForOpenPorts() []int {
+	var openPorts []int
+	if *protocol == "UDP" {
+		openPorts = port.RunWideUDPScan(*startPort, *endPort, *hostname)
 	} else {
-		fmt.Printf("-------------- No Open %s Port on Host %q in given range --------------\n", protocol, hostname)
+		openPorts = port.RunWideTCPScan(*startPort, *endPort, *hostname)
 	}
+	return openPorts
+}
+
+func printPorts(openPorts []int) {
+	if len(openPorts) > 0 {
+		outputAllOpenPorts(openPorts)
+	} else {
+		outputPortIsEmpty()
+	}
+}
+
+func outputAllOpenPorts(openPorts []int) {
+	fmt.Printf("-------------- Open %s Ports on Host %q --------------\n", *protocol, *hostname)
+	for _, port := range openPorts {
+		fmt.Println(port)
+	}
+	fmt.Printf("-----------------------------------------------------------------\n")
+}
+
+func outputPortIsEmpty() {
+	fmt.Printf("-------------- No Open %s Port on Host %q from %d - %d --------------\n", *protocol, *hostname, *startPort, *endPort)
 }
