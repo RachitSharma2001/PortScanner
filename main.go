@@ -2,18 +2,28 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	port "fake.com/PortScanner/port"
 )
 
-func main() {
-	/*openUdpPorts := port.RunWideUDPScan(1, 65535, "127.0.0.1")
-	printPorts("UDP", openUdpPorts)*/
+const (
+	DEFAULT_PROTOCOL = "TCP"
+	DEFAULT_HOSTNAME = "127.0.0.1"
+)
 
-	openTcpPorts := port.RunWideTCPScan(1, 65535, "127.0.0.1")
-	printPorts("TCP", openTcpPorts)
+func main() {
+	protocol := DEFAULT_PROTOCOL
+	hostname := DEFAULT_HOSTNAME
+	openTcpPorts := port.RunWideTCPScan(1, 65535, hostname)
+	sort.Ints(openTcpPorts)
+	printPorts(protocol, hostname, openTcpPorts)
 }
 
-func printPorts(protocol string, openPorts []int) {
-	fmt.Printf("Open %s ports: %v \n", protocol, openPorts)
+func printPorts(protocol string, hostname string, openPorts []int) {
+	fmt.Printf("-------------- Open %s Ports on Host %q --------------\n", protocol, hostname)
+	for _, port := range openPorts {
+		fmt.Println(port)
+	}
+	fmt.Printf("-----------------------------------------------------------------\n")
 }
