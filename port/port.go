@@ -13,6 +13,7 @@ const (
 	tcpProtocol   = "tcp"
 	udpProtocol   = "udp"
 	noBufferSpace = "system lacked sufficient buffer space"
+	MAXWORKERS    = 10000
 )
 
 type ScanResults struct {
@@ -52,7 +53,7 @@ func RunWideTCPScan(startPort int, endPort int, hostname string) []int {
 	portsToScan := make(chan int)
 	openPorts := ScanResults{}
 	var wg sync.WaitGroup
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < MAXWORKERS; i++ {
 		wg.Add(1)
 		go makeTcpRequests(portsToScan, &openPorts, hostname, &wg)
 	}
@@ -63,7 +64,7 @@ func RunWideTCPScan(startPort int, endPort int, hostname string) []int {
 
 func makeTcpRequests(portsToScan chan int, scanRes *ScanResults, hostname string, wg *sync.WaitGroup) {
 	for port := range portsToScan {
-		conn, err := scanIndividualTcpPort(port, hostname)
+		conn, err := ScanIndividualTcpPort(port, hostname)
 		if errhelp.NoError(err) {
 			scanRes.addOpenPort(port)
 			(*conn).Close()
@@ -74,7 +75,7 @@ func makeTcpRequests(portsToScan chan int, scanRes *ScanResults, hostname string
 	wg.Done()
 }
 
-func scanIndividualTcpPort(port int, hostname string) (*net.Conn, error) {
+func ScanIndividualTcpPort(port int, hostname string) (*net.Conn, error) {
 	hostnamePortStr := getPortString(port, hostname)
 	conn, err := net.Dial(tcpProtocol, hostnamePortStr)
 	return &conn, err
