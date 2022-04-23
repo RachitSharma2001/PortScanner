@@ -36,7 +36,7 @@ func main() {
 func parseUserEnteredFlags() {
 	protocol = flag.String("protocol", DEFAULT_PROTOCOL, "Either TCP or UDP")
 	hostname = flag.String("host", DEFAULT_HOSTNAME, "Host IP address")
-	startPort = flag.Int("start", MIN_START_PORT, "Port to start when scanning")
+	startPort = flag.Int("beg", MIN_START_PORT, "Port to start when scanning")
 	endPort = flag.Int("end", MAX_END_PORT, "Port to end when scanning")
 	flag.Parse()
 }
